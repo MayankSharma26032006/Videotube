@@ -1,0 +1,33 @@
+{
+  "name": "second_backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "backend of chai and code",
+  "keywords": [
+    "javascript",
+    "backend",
+    "node"
+  ],
+  "license": "ISC",
+  "author": "Mayank Sharma",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.10.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.6.2",
+    "mongoose-aggregate-paginate-v2": "^1.1.4",
+    "multer": "^2.1.1",
+    "prettier": "^3.8.3"
+  }
+}
