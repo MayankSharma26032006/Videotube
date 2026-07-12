@@ -20,12 +20,13 @@ const getAllVideos = asyncHandler(async(req,res)=>{
         if(!isValidObjectId(userId)){
             throw new ApiError(404,"Invalid Userid")
         }
-    }
-    pipeline.push({
+        pipeline.push({
         $match:{
             owner:new mongoose.Types.ObjectId(userId)
         }
     })
+    }
+    
 
     if(query){
         pipeline.push({
@@ -70,23 +71,163 @@ const getAllVideos = asyncHandler(async(req,res)=>{
         },
         {
             $addFields:{
-                owner:{$first:"owner"}
+                owner:{$first:"$owner"}
             }
         }
     )
 
-
+// Pagination it limits the no of vid fetched and helps reducing load on db it
+// asks for page and limit otherwise takes default
     const options = {
         page:parseInt(page),
         limit:parseInt(limit)
     }
 
     const videos = await Video.aggregatePaginate(
-        Video.aggregate(pipeline),
+        Video.aggregate(pipeline),//used to fetch data from db using aggregation framework 
+        //it takes previous output and allows to perform operations on it like filtering, sorting, grouping etc
         options
     )
     return res
     .status(200)
     .json(new ApiResponse(200,videos,"Videos fetched successfully"))
 
+})
+
+const publishAVideo = asyncHandler(async(req,res)=>{
+// So the job of this API is:
+// Validate input.
+// Receive uploaded files.
+// Upload files to Cloudinary.
+// Save video information in MongoDB.
+// Return success.
+    const{title,description} = req.body
+    if(!title?.trim()){
+        throw new ApiError(400,"Title is required")
+    }
+    if(!description?.trim()){
+        throw new ApiError(400,"Description is required")
+    }
+    const videoLocalPath = req.files?.videoFile?.[0]?.path
+    const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path
+    if(!videoLocalPath){
+        throw new ApiError(400,"Video file is required")
+    }
+    if(!thumbnailLocalPath){
+        throw new ApiError(400,"Thumbnail is required")
+    }
+
+    const videoFile = await uploadOnCloudinary(videoLocalPath)
+    const thumbnail = await uploadOnCloudinary(thumbnailLocalPath)
+    if(!videoFile?.url){
+        throw new ApiError(500,"Failed to upload video file to Cloudinary")
+    }
+    if(!thumbnail?.url){
+        throw new ApiError(500,"Failed to upload thumbnail to Cloudinary")
+    }
+    const video = await Video.create({
+        videoFile: videoFile.url,
+        thumbnail: thumbnail.url,
+        title: title.trim(),
+        description: description.trim(),
+        duration: videoFile.duration,
+        owner: req.user._id,
+        isPublished:true
+    })
+    if(!video){
+        throw new ApiError(500,"Failed to publish video")
+    }
+    return res
+    .status(201)
+    .json(new ApiResponse(201,video,"Video published successfully"))
+
+})
+
+const getVideoById = asyncHandler(async(req,res)=>{
+    const{videoId} = req.params
+    if(!isValidObjectId(videoId)){
+        throw new ApiError(400,"Invalid video Id")
+    }
+    const video = await Video.aggregate([
+        {
+            $match:{_id: new mongoose.Types.ObjectId(videoId)}
+        },
+        {
+            $lookup:{
+                from:"users",
+                localField:"owner",
+                foreignField:"_id",
+                as:"owner",
+                pipeline:[
+                    {
+                        $project:{
+                            fullname:1,
+                            username:1,
+                            avatar:1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $addFields:{
+                owner:{$first:"$owner"}
+            }
+        }
+    ])
+    if(!video?.length){
+        throw new ApiError(404,"Video not found")
+    }
+
+    await Video.findByIdAndUpdate(videoId,{
+        $inc:{views:1}
+    })
+    await User.findByIdAndUpdate(req.user._id,{
+        $addToSet:{watchHistory:videoId}
+    })
+    return res
+    .status(200)
+    .json(new ApiResponse(200,video[0],"Video fetched successfully"))
+
+
+
+
+
+})
+const updateVideo = asyncHandler(async(req,res)=>{
+    const{videoId} = req.params
+    if(!isValidObjectId(videoId)){
+        throw new ApiError(400,"Invalid video Id")
+    }
+    if(!title?.trim()&&!description?.trim()&&!req.file){
+        throw new ApiError(400,"At least one field is required to update")
+    }
+    const video = await Video.findById(videoId)
+    if(!video){
+        throw new ApiError(404,"Video not found")
+    }
+    if(video.owner.toString()!==req.user._id.toString()){
+        throw new ApiError(403,"You are not authorized to update this video")
+    }
+    const updateFields = {}
+    if(title?.trim()){
+        updateFields.title = title.trim()
+    }
+    if(description?.trim()){
+        updateFields.description = description.trim()
+    }
+    if(req.file?.path){
+        // Handle thumbnail update logic here
+        const thumbnail = await uploadOnCloudinary(req.file.path)
+        if(!thumbnail?.url){
+            throw new ApiError(500,"Failed to upload thumbnail to Cloudinary")
+        }
+        updateFields.thumbnail = thumbnail.url
+    }
+    const updatedVideo = await Video.findByIdAndUpdate(videoId,{
+        $set:updateFields
+    },{new:true})
+    return res
+    .status(200)
+    .json(new ApiResponse(200,updatedVideo,"Video updated successfully"))
 })
