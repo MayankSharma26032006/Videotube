@@ -196,6 +196,7 @@ const getVideoById = asyncHandler(async(req,res)=>{
 })
 const updateVideo = asyncHandler(async(req,res)=>{
     const{videoId} = req.params
+    const { title, description } = req.body;
     if(!isValidObjectId(videoId)){
         throw new ApiError(400,"Invalid video Id")
     }
@@ -231,3 +232,59 @@ const updateVideo = asyncHandler(async(req,res)=>{
     .status(200)
     .json(new ApiResponse(200,updatedVideo,"Video updated successfully"))
 })
+
+const deleteVideo = asyncHandler(async(req,res)=>{
+    const {videoId} = req.params
+    if(!isValidObjectId(videoId)){
+        throw new ApiError(400,"Invalid video Id")
+    }
+    const video = await Video.findById(videoId)
+    if(!video){
+        throw new ApiError(404,"Video not found")
+    }
+    if(video.owner.toString()!==req.user._id.toString()){
+        throw new ApiError(403,"You are not allowed to delete this video")
+    }
+    await Video.findByIdAndDelete(videoId)
+    await User.updateMany(
+        {watchHistory:videoId},
+        {$pull:{watchHistory:videoId}}
+    )
+    return res
+    .status(200)
+    .json(new ApiResponse(200,{},"Video deleted successfully"))
+})
+const togglePublishStatus = asyncHandler(async(req,res)=>{
+    const{videoId} = req.params
+    if(!isValidObjectId(videoId)){
+        throw new ApiError(400,"Invalid video ID")
+    }
+    const video = await Video.findById(videoId)
+    if(!video){
+        throw new ApiError(404,"Video not found")
+    }
+    if(video.owner.toString()!==req.user._id.toString()){
+        throw new ApiError(403,"You are not allowed to do this")
+    }
+    video.isPublished = !video.isPublished
+    await video.save({validateBeforeSave:false})
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            {isPublished:video.isPublished},
+            `Video${video.isPublished?"published":"unpublished"}successfully`
+
+        )
+    )
+})
+
+export{
+    getAllVideos,
+    publishAVideo,
+    getVideoById,
+    updateVideo,
+    deleteVideo,
+    togglePublishStatus
+}
