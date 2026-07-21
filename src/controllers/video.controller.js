@@ -148,6 +148,9 @@ const getVideoById = asyncHandler(async(req,res)=>{
     if(!isValidObjectId(videoId)){
         throw new ApiError(400,"Invalid video Id")
     }
+    await Video.findByIdAndUpdate(videoId,{
+        $inc:{views:1}
+    })
     const video = await Video.aggregate([
         {
             $match:{_id: new mongoose.Types.ObjectId(videoId)}
@@ -178,10 +181,6 @@ const getVideoById = asyncHandler(async(req,res)=>{
     if(!video?.length){
         throw new ApiError(404,"Video not found")
     }
-
-    await Video.findByIdAndUpdate(videoId,{
-        $inc:{views:1}
-    })
     await User.findByIdAndUpdate(req.user._id,{
         $addToSet:{watchHistory:videoId}
     })
@@ -274,7 +273,7 @@ const togglePublishStatus = asyncHandler(async(req,res)=>{
         new ApiResponse(
             200,
             {isPublished:video.isPublished},
-            `Video${video.isPublished?"published":"unpublished"}successfully`
+            `Video${video.isPublished? "published" : "unpublished"}successfully`
 
         )
     )

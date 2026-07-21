@@ -43,7 +43,9 @@ const generateAccessAndRefreshTokens = async (userId) => {
 
 
 const registerUser = asyncHandler(async (req, res) => {
-  console.log('ENTER registerUser')
+  // console.log('ENTER registerUser')
+
+
   // get user details
   // validation - not empty
   // check if user already exists
@@ -55,20 +57,22 @@ const registerUser = asyncHandler(async (req, res) => {
   // return response
 
   const { fullName, email, username, password } = req.body;
-  console.log("email:", email);
-  if(fullName===""){
-    throw new ApiError(400,"fullname is required")
-  }
-  if(email===""){
-    throw new ApiError(400,"email is required")
-  }
-  if(password===""){
-    throw new ApiError(400,"password is required")
-  }
-  if(username===""){
-    throw new ApiError(400,"username is required")
+  // console.log("email:", email);
+  if (!fullName?.trim()) {
+      throw new ApiError(400, "Full name is required")
   }
 
+  if (!email?.trim()) {
+      throw new ApiError(400, "Email is required")
+  }
+
+  if (!password?.trim()) {
+      throw new ApiError(400, "Password is required")
+  }
+
+  if (!username?.trim()) {
+      throw new ApiError(400, "Username is required")
+  } 
   const existedUser = await User.findOne({
     $or:[{username},{email}]
   })
@@ -76,9 +80,9 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(409,"User already exists")
   }
 
-  console.log('DEBUG content-type:', req.headers['content-type'])
-  console.log('DEBUG req.files:', req.files)
-  console.log('DEBUG req.body:', req.body)
+  // console.log('DEBUG content-type:', req.headers['content-type'])
+  // console.log('DEBUG req.files:', req.files)
+  // console.log('DEBUG req.body:', req.body)
 
   const avatarLocalPath = req.files?.avatar[0]?.path
   // const coverImageLocalPath = req.files?.coverImage[0]?.path
