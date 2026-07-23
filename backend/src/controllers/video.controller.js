@@ -4,7 +4,7 @@ import { User } from "../models/user.model.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
-import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js"
 
 const getAllVideos = asyncHandler(async(req,res)=>{
     const{
@@ -126,14 +126,16 @@ const publishAVideo = asyncHandler(async(req,res)=>{
         throw new ApiError(500,"Failed to upload thumbnail to Cloudinary")
     }
     const video = await Video.create({
-        videoFile: videoFile.url,
-        thumbnail: thumbnail.url,
-        title: title.trim(),
-        description: description.trim(),
-        duration: videoFile.duration,
-        owner: req.user._id,
-        isPublished:true
-    })
+    videoFile: videoFile.url,
+    videoFilePublicId: videoFile.public_id,
+    thumbnail: thumbnail.url,
+    thumbnailPublicId: thumbnail.public_id,
+    title: title.trim(),
+    description: description.trim(),
+    duration: videoFile.duration,
+    owner: req.user._id,
+    isPublished:true
+})
     if(!video){
         throw new ApiError(500,"Failed to publish video")
     }
@@ -217,13 +219,14 @@ const updateVideo = asyncHandler(async(req,res)=>{
         updateFields.description = description.trim()
     }
     if(req.file?.path){
-        // Handle thumbnail update logic here
-        const thumbnail = await uploadOnCloudinary(req.file.path)
-        if(!thumbnail?.url){
-            throw new ApiError(500,"Failed to upload thumbnail to Cloudinary")
-        }
-        updateFields.thumbnail = thumbnail.url
+    await deleteFromCloudinary(video.thumbnailPublicId, "image")
+    const thumbnail = await uploadOnCloudinary(req.file.path)
+    if(!thumbnail?.url){
+        throw new ApiError(500,"Failed to upload thumbnail to Cloudinary")
     }
+    updateFields.thumbnail = thumbnail.url
+    updateFields.thumbnailPublicId = thumbnail.public_id
+}
     const updatedVideo = await Video.findByIdAndUpdate(videoId,{
         $set:updateFields
     },{new:true})
@@ -249,9 +252,11 @@ const deleteVideo = asyncHandler(async(req,res)=>{
         {watchHistory:videoId},
         {$pull:{watchHistory:videoId}}
     )
-    return res
-    .status(200)
-    .json(new ApiResponse(200,{},"Video deleted successfully"))
+    await deleteFromCloudinary(video.videoFilePublicId, "video")
+    await deleteFromCloudinary(video.thumbnailPublicId, "image")
+        return res
+        .status(200)
+        .json(new ApiResponse(200,{},"Video deleted successfully"))
 })
 const togglePublishStatus = asyncHandler(async(req,res)=>{
     const{videoId} = req.params
