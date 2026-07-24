@@ -134,7 +134,7 @@ function SectionHeader({ icon: Icon, title }) {
 
 function FeaturedBanner({ video }) {
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden aspect-[21/9] mb-8 group cursor-pointer">
+    <div className="relative w-full rounded-2xl overflow-hidden h-64 mb-8 group cursor-pointer">
       <img
         src={video.thumbnail}
         alt={video.title}

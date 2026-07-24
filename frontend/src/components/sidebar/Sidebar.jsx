@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { NavLink } from "react-router-dom"
 import {
   RiHome5Line, RiHome5Fill,
   RiCompassLine, RiCompassFill,
@@ -28,15 +29,12 @@ const creatorNav = [
   { label: "Creator Studio", path: "/studio", icon: RiDashboardLine, activeIcon: RiDashboardFill },
 ]
 
-function NavItem({ item, activePath, collapsed, onClick }) {
-  const isActive = activePath === item.path
-  const Icon = isActive ? item.activeIcon : item.icon
-
+function NavItem({ item, collapsed }) {
   return (
-    <button
-      onClick={() => onClick(item.path)}
+    <NavLink
+      to={item.path}
       title={collapsed ? item.label : undefined}
-      className={`
+      className={({ isActive }) => `
         w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
         transition-all duration-150 group relative
         ${isActive
@@ -46,26 +44,19 @@ function NavItem({ item, activePath, collapsed, onClick }) {
         ${collapsed ? "justify-center px-0" : ""}
       `}
     >
-      <Icon className={`shrink-0 text-[18px] ${isActive ? "text-amber-400" : "text-zinc-500 group-hover:text-zinc-300"}`} />
-
-      {!collapsed && (
-        <span className="truncate">{item.label}</span>
+      {({ isActive }) => (
+        <>
+          <item.icon className={`shrink-0 text-[18px] ${isActive ? "text-amber-400" : "text-zinc-500 group-hover:text-zinc-300"}`} />
+          {!collapsed && <span className="truncate">{item.label}</span>}
+          {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-amber-400" />}
+          {collapsed && (
+            <span className="absolute left-full ml-3 px-2 py-1 rounded-md text-xs bg-zinc-800 text-zinc-100 opacity-0 pointer-events-none group-hover:opacity-100 whitespace-nowrap z-50 transition-opacity duration-150">
+              {item.label}
+            </span>
+          )}
+        </>
       )}
-
-      {isActive && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-amber-400" />
-      )}
-
-      {collapsed && (
-        <span className="
-          absolute left-full ml-3 px-2 py-1 rounded-md text-xs bg-zinc-800 text-zinc-100
-          opacity-0 pointer-events-none group-hover:opacity-100 whitespace-nowrap z-50
-          transition-opacity duration-150
-        ">
-          {item.label}
-        </span>
-      )}
-    </button>
+    </NavLink>
   )
 }
 
